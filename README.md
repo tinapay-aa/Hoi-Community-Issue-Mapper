@@ -1,1 +1,1 @@
-# Hoi---Community-Issue-Mapper
+# Hoi-Community-Issue-Mapper
