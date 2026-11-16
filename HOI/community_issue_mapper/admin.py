@@ -6,6 +6,7 @@ from .models import Category, Issue, IssueUpdate
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'name')
     search_fields = ('name',)
+    ordering = ('name',)
 
 
 @admin.register(Issue)
@@ -21,6 +22,8 @@ class IssueAdmin(admin.ModelAdmin):
 
     list_filter = ('status', 'priority', 'category')
     search_fields = ('title', 'description', 'address')
+    ordering = ('-created_at',)
+    list_per_page = 20
 
 
 @admin.register(IssueUpdate)
@@ -32,3 +35,7 @@ class IssueUpdateAdmin(admin.ModelAdmin):
         'new_status',
         'created_at'
     )
+
+    list_filter = ('new_status', 'created_at')
+    ordering = ('-created_at',)
+    list_per_page = 20
