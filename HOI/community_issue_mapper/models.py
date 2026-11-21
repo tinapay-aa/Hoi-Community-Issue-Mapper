@@ -1,18 +1,81 @@
-
 from django.db import models
 from django.contrib.auth.models import User
+
+
+class Community(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_communities'
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = 'communities'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class CommunityMembership(models.Model):
+    ROLE_CHOICES = [
+        ('Member', 'Member'),
+        ('Moderator', 'Moderator'),
+        ('Admin', 'Admin'),
+    ]
+
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='memberships'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='community_memberships'
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='Member')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['community', 'user'],
+                name='unique_community_member'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} @ {self.community.name} ({self.role})"
 
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
 
+    class Meta:
+        verbose_name_plural = 'categories'
+        ordering = ['name']
+
     def __str__(self):
         return self.name
 
 
-class Issue(models.Model):
+class Location(models.Model):
+    latitude = models.DecimalField(max_digits=10, decimal_places=7)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7)
+    address = models.CharField(max_length=255)
 
+    def __str__(self):
+        return f"{self.address} ({self.latitude}, {self.longitude})"
+
+
+class Issue(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
         ('Under Review', 'Under Review'),
@@ -27,82 +90,86 @@ class Issue(models.Model):
         ('High', 'High'),
     ]
 
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='issues'
+    )
     category = models.ForeignKey(
         Category,
         on_delete=models.PROTECT,
         related_name='issues'
     )
-
     reported_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='reported_issues'
     )
-
-    latitude = models.DecimalField(
-        max_digits=10,
-        decimal_places=7
+    location = models.OneToOneField(
+        Location,
+        on_delete=models.CASCADE,
+        related_name='issue'
     )
 
-    longitude = models.DecimalField(
-        max_digits=10,
-        decimal_places=7
-    )
+    title = models.CharField(max_length=200)
+    description = models.TextField()
 
-    address = models.CharField(max_length=255)
-
-    photo = models.ImageField(
-        upload_to='issue_photos/',
-        blank=True,
-        null=True
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='Pending'
-    )
-
-    priority = models.CharField(
-        max_length=10,
-        choices=PRIORITY_CHOICES,
-        default='Medium'
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='Medium')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.title
 
 
-class IssueUpdate(models.Model):
+class IssueImage(models.Model):
+    TYPE_CHOICES = [
+        ('Evidence', 'Evidence'),
+        ('Resolution Proof', 'Resolution Proof'),
+    ]
 
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        related_name='images'
+    )
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_issue_images'
+    )
+    image = models.ImageField(upload_to='issue_photos/')
+    image_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='Evidence')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.issue.title} - {self.image_type}"
+
+
+class IssueUpdate(models.Model):
     issue = models.ForeignKey(
         Issue,
         on_delete=models.CASCADE,
         related_name='updates'
     )
-
     updated_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True
     )
-
-    previous_status = models.CharField(
-        max_length=20,
-        blank=True
-    )
-
+    previous_status = models.CharField(max_length=20, blank=True)
     new_status = models.CharField(max_length=20)
-
     remarks = models.TextField(blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.issue.title} - {self.new_status}"
