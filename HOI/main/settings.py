@@ -34,6 +34,9 @@ ALLOWED_HOSTS = []
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
+GITHUB_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -49,6 +52,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
     
 
     'community_issue_mapper.apps.CommunityIssueMapperConfig',
@@ -165,6 +169,13 @@ SOCIALACCOUNT_PROVIDERS = {
         "APP": {
             "client_id": GOOGLE_CLIENT_ID,
             "secret": GOOGLE_CLIENT_SECRET,
+            "key": "",
+        }
+    },
+    "github": {
+        "APP": {
+            "client_id": GITHUB_CLIENT_ID,
+            "secret": GITHUB_CLIENT_SECRET,
             "key": "",
         }
     }
