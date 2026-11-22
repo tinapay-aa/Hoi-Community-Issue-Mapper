@@ -1,0 +1,35 @@
+{% extends "allauth/layouts/entrance.html" %}
+
+{% load allauth %}
+
+{% block head_title %}Sign In{% endblock head_title %}
+
+{% block content %}
+    <div class="inner-container">
+
+        <span class="header">
+            <h1>{% if process == "connect" %}Connect{% else %}Confirm Sign In{% endif %}</h1>
+            <i class="bi bi-{{ provider.id }} provider-icon" aria-hidden="true"></i>
+        </span>
+
+        <p class="auth-sub">
+            {% if process == "connect" %}
+                You are about to connect your <strong>{{ provider.name }}</strong> account.
+            {% else %}
+                You are about to sign in using your <strong>{{ provider.name }}</strong> account.
+            {% endif %}
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-lower-section">
+                <button id="submit-button" type="submit">
+                    Continue with {{ provider.name }}
+                </button>
+                <a id="cancel-button" href="{% url 'account_login' %}">Cancel</a>
+            </div>
+        </form>
+
+    </div>
+{% endblock %}

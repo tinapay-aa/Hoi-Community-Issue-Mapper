@@ -1,0 +1,18 @@
+{% extends "allauth/layouts/base.html" %}
+
+{% block body %}
+    <main class="auth-container">
+        <a href="{% url 'home' %}" class="brand auth-brand">Hoi!</a>
+
+        {% if messages %}
+            <ul class="auth-messages">
+                {% for message in messages %}<li class="auth-message {{ message.tags }}">{{ message }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+
+        <a href="{% url 'home' %}" class="auth-back"><i class="bi bi-arrow-left"></i> Back to the map</a>
+    </main>
+{% endblock %}

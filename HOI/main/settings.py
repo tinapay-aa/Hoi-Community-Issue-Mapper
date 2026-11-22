@@ -176,24 +176,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
-# Google Provider Settings
 
-SOCIALACCOUNT_PROVIDERS = {
-    "google": {
-        "APP": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "secret": GOOGLE_CLIENT_SECRET,
-            "key": "",
-        }
-    },
-    "github": {
-        "APP": {
-            "client_id": GITHUB_CLIENT_ID,
-            "secret": GITHUB_CLIENT_SECRET,
-            "key": "",
-        }
-    }
-}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
