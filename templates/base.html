@@ -55,7 +55,7 @@
                         <i class="bi bi-plus-lg"></i> New
                     </a>
                     {% else %}
-                    <a href="#" {# TODO: link to login #}
+                    <a href="{% url 'account_login' %}"
                        class="btn-new"
                        data-bs-toggle="tooltip" data-bs-placement="right"
                        title="Log in to create your own community."
@@ -112,16 +112,20 @@
 
             {# Footer: settings + profile #}
             <div class="sidebar-footer">
-                <a href="#" class="sidebar-link"> {# TODO: settings url #}
+                {% if user.is_authenticated %}
+                <a href="{% url 'profile_settings' %}" class="sidebar-link">
                     <i class="bi bi-gear"></i><span>Settings</span>
                 </a>
 
-                {% if user.is_authenticated %}
                 <div class="profile">
-                    <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
+                    {% if user.profile.avatar %}
+                        <img src="{{ user.profile.avatar.url }}" alt="" class="avatar avatar-img">
+                    {% else %}
+                        <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
+                    {% endif %}
                     <div class="profile-text">
-                        <a href="#" class="profile-name">{{ user.username }}</a> {# TODO: profile url #}
-                        <a href="#" class="profile-link">Profile settings</a> {# TODO: profile settings url #}
+                        <a href="{% url 'profile_settings' %}" class="profile-name">{{ user.username }}</a>
+                        <a href="{% url 'profile_settings' %}" class="profile-link">Profile settings</a>
                     </div>
                 </div>
                 {% else %}
@@ -130,8 +134,8 @@
                     <div class="profile-text">
                         <span class="profile-name">Guest</span>
                         <span class="profile-link-row">
-                            <a href="{% url 'account_login' %}" class="profile-link">Log in</a> {# TODO: login url #}
-                            <a href="{% url 'account_signup' %}" class="profile-link">Sign up</a> {# TODO: signup url #}
+                            <a href="{% url 'account_login' %}" class="profile-link">Log in</a>
+                            <a href="{% url 'account_signup' %}" class="profile-link">Sign up</a>
                         </span>
                     </div>
                 </div>

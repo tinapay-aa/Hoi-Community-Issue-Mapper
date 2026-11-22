@@ -1,7 +1,10 @@
 from django.db.models import Q
-from django.shortcuts import render
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
 
-from .models import Category, Community, Issue
+from .forms import ProfileForm, UserForm
+from .models import Category, Community, Issue, Profile
 
 
 def home(request):
@@ -67,6 +70,36 @@ def home(request):
         'only_mine': only_mine,
         'q': q,
         'issues': issues_data,
+    })
+
+@login_required
+def profile_settings(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        user_form = UserForm(request.POST, instance=request.user)
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            if request.POST.get('remove_avatar') and not request.FILES.get('avatar'):
+                profile.avatar.delete(save=False)
+                profile.avatar = ''
+                profile.save()
+            else:
+                profile_form.save()
+            messages.success(request, 'Your profile has been updated.')
+            return redirect('profile_settings')
+    else:
+        user_form = UserForm(instance=request.user)
+        profile_form = ProfileForm(instance=profile)
+
+    return render(request, 'profile_settings.html', {
+        'user_form': user_form,
+        'profile_form': profile_form,
+        'profile': profile,
+        # base.html sidebar needs these
+        'communities': Community.objects.filter(is_active=True),
     })
 
 
