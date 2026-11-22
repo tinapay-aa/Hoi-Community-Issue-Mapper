@@ -1,0 +1,8 @@
+- [ ] CRUD for all models
+- [ ] Social Logins
+- [ ] Logins
+- [ ] Internal API
+- [ ] PWA
+- [ ] Deployment
+- [ ] Docker?
+- [ ] Readme improvement
