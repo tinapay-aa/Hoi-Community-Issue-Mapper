@@ -1,4 +1,317 @@
 {% extends "base.html" %}
-{% block title %} Home {% endblock %}
+{% load static %}
+{% block title %}Map{% endblock %}
 
-{% block main-content %} {% endblock %}
+{% block extra-head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+{% endblock %}
+
+{% block main-content %}
+<div id="map" data-auth="{{ user.is_authenticated|yesno:'true,false' }}" aria-label="Map of community issues"></div>
+
+{# ---------- Issue details panel (opens when a pin is clicked) ---------- #}
+<div class="offcanvas offcanvas-end issue-panel" tabindex="-1" id="issuePanel" aria-labelledby="issuePanelTitle">
+    <div class="offcanvas-header">
+        <div>
+            <span class="badge status-badge" id="issueStatus"></span>
+            <h2 class="offcanvas-title" id="issuePanelTitle"></h2>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div id="issueImages" class="issue-images"></div>
+
+        <dl class="issue-meta">
+            <div><dt>Category</dt><dd id="issueCategory"></dd></div>
+            <div><dt>Priority</dt><dd id="issuePriority"></dd></div>
+            <div><dt>Community</dt><dd id="issueCommunity"></dd></div>
+            <div><dt>Reported by</dt><dd id="issueReporter"></dd></div>
+            <div><dt>Reported on</dt><dd id="issueDate"></dd></div>
+            <div class="full"><dt>Location</dt><dd id="issueAddress"></dd></div>
+        </dl>
+
+        <p id="issueDescription" class="issue-description"></p>
+
+        <h3 class="panel-subheading">Comments</h3>
+        <ul id="commentList" class="comment-list"></ul>
+
+        {% if user.is_authenticated %}
+        <form id="commentForm" method="post" action="#"> {# TODO: comment create url #}
+            {% csrf_token %}
+            <input type="hidden" name="issue" id="commentIssueId">
+            <label for="commentBody" class="visually-hidden">Add a comment</label>
+            <textarea id="commentBody" name="body" class="form-control" rows="2" placeholder="Add a comment" required></textarea>
+            <button type="submit" class="btn btn-accent mt-2">Post comment</button>
+        </form>
+        {% else %}
+        <p class="text-muted small">Log in to join the conversation.</p>
+        {% endif %}
+    </div>
+</div>
+
+{# ---------- Report-an-issue modal ---------- #}
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="#" enctype="multipart/form-data"> {# TODO: issue create url #}
+            {% csrf_token %}
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="reportModalTitle">Report an issue</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="latitude" id="reportLat">
+                <input type="hidden" name="longitude" id="reportLng">
+
+                <div class="mb-3">
+                    <label for="reportAddress" class="form-label">Address</label>
+                    <input type="text" class="form-control" name="address" id="reportAddress" required>
+                    <div class="form-text" id="reportAddressHint">Looking up the address for this pin…</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="reportTitle" class="form-label">What's the problem?</label>
+                    <input type="text" class="form-control" name="title" id="reportTitle" maxlength="200" placeholder="e.g. Broken road on the corner" required>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <label for="reportCategory" class="form-label">Category</label>
+                        <select class="form-select" name="category" id="reportCategory" required>
+                            <option value="" selected disabled>Choose one</option>
+                            {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="reportCommunity" class="form-label">Community</label>
+                        <select class="form-select" name="community" id="reportCommunity" required>
+                            {% for c in communities %}
+                            <option value="{{ c.id }}" {% if active_community.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="reportDescription" class="form-label">Details</label>
+                    <textarea class="form-control" name="description" id="reportDescription" rows="3" required></textarea>
+                </div>
+
+                <div>
+                    <label for="reportPhoto" class="form-label">Photo evidence</label>
+                    <input type="file" class="form-control" name="image" id="reportPhoto" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-accent">Submit report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Issue data for the map (rendered safely by Django) #}
+{{ issues|json_script:"issues-data" }}
+{% endblock %}
+
+{% block extra-js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+(function () {
+    const IS_AUTH = document.getElementById('map').dataset.auth === 'true';
+    const issues = JSON.parse(document.getElementById('issues-data').textContent);
+    const DEFAULT_CENTER = [14.5995, 120.9842];   // fallback view when there are no issues
+    const DEFAULT_ZOOM = 12;
+
+    const STATUS_COLORS = {
+        'Pending': '#d97706',
+        'Under Review': '#2563eb',
+        'In Progress': '#7c3aed',
+        'Resolved': '#16a34a',
+        'Rejected': '#6b7280'
+    };
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    // ---------- Map ----------
+    const map = L.map('map', { zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // ---------- Pins, grouped into numbered clusters when zoomed out ----------
+    function pinIcon(status) {
+        const color = STATUS_COLORS[status] || '#d97706';
+        return L.divIcon({
+            className: 'issue-pin-wrap',
+            html: '<span class="issue-pin" style="background:' + color + '"></span>',
+            iconSize: [26, 34],
+            iconAnchor: [13, 34]
+        });
+    }
+
+    const cluster = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 55,
+        iconCreateFunction: function (c) {
+            const n = c.getChildCount();
+            return L.divIcon({
+                html: '<span>' + n + '</span>',
+                className: 'issue-cluster',
+                iconSize: [44, 44]
+            });
+        }
+    });
+
+    const panelEl = document.getElementById('issuePanel');
+    const panel = bootstrap.Offcanvas.getOrCreateInstance(panelEl);
+
+    issues.forEach(function (issue) {
+        const marker = L.marker([issue.latitude, issue.longitude], {
+            icon: pinIcon(issue.status),
+            title: issue.title
+        });
+        marker.on('click', function () { openIssue(issue); });
+        cluster.addLayer(marker);
+    });
+    map.addLayer(cluster);
+
+    if (issues.length) {
+        map.fitBounds(cluster.getBounds().pad(0.2), { maxZoom: 16 });
+    }
+
+    // ---------- Issue details panel ----------
+    function openIssue(issue) {
+        const badge = document.getElementById('issueStatus');
+        badge.textContent = issue.status;
+        badge.style.background = STATUS_COLORS[issue.status] || '#6b7280';
+
+        document.getElementById('issuePanelTitle').textContent = issue.title;
+        document.getElementById('issueCategory').textContent = issue.category;
+        document.getElementById('issuePriority').textContent = issue.priority;
+        document.getElementById('issueCommunity').textContent = issue.community;
+        document.getElementById('issueReporter').textContent = issue.reported_by;
+        document.getElementById('issueDate').textContent = issue.created_at;
+        document.getElementById('issueAddress').textContent = issue.address;
+        document.getElementById('issueDescription').textContent = issue.description;
+
+        document.getElementById('issueImages').innerHTML = (issue.images || []).map(function (img) {
+            return '<figure><img src="' + esc(img.url) + '" alt="' + esc(img.type) + ' photo for ' + esc(issue.title) + '">' +
+                   '<figcaption>' + esc(img.type) + '</figcaption></figure>';
+        }).join('');
+
+        const comments = issue.comments || [];
+        document.getElementById('commentList').innerHTML = comments.length
+            ? comments.map(function (c) {
+                return '<li><strong>' + esc(c.author) + '</strong> <time>' + esc(c.created_at) + '</time><p>' + esc(c.body) + '</p></li>';
+              }).join('')
+            : '<li class="comment-empty">No comments yet.</li>';
+
+        const idField = document.getElementById('commentIssueId');
+        if (idField) idField.value = issue.id;
+
+        panel.show();
+    }
+
+    // ---------- Click the map to report an issue ----------
+    const reportModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('reportModal'));
+    let draftMarker = null;
+
+    function clearDraft() {
+        if (draftMarker) { map.removeLayer(draftMarker); draftMarker = null; }
+    }
+
+    map.on('click', function (e) {
+        clearDraft();
+        panel.hide();
+
+        const lat = e.latlng.lat.toFixed(7);
+        const lng = e.latlng.lng.toFixed(7);
+
+        draftMarker = L.marker(e.latlng, { icon: pinIcon('Pending'), opacity: 0.85 }).addTo(map);
+
+        const box = document.createElement('div');
+        box.className = 'report-prompt';
+        if (IS_AUTH) {
+            box.innerHTML = '<strong>Report an issue here?</strong>' +
+                '<button type="button" class="btn btn-accent btn-sm">Report issue</button>';
+            box.querySelector('button').addEventListener('click', function () {
+                draftMarker.closePopup();
+                startReport(lat, lng);
+            });
+        } else {
+            box.innerHTML = '<strong>Want to report an issue here?</strong>' +
+                '<span>Log in to pin a problem on the map.</span>' +
+                '<a href="#" class="btn btn-accent btn-sm">Log in</a>'; // TODO: login url
+        }
+        draftMarker.bindPopup(box, { closeButton: false, offset: [0, -28] }).openPopup();
+    });
+
+    map.on('popupclose', function () {
+        // Remove the draft pin if the person dismisses the prompt without reporting
+        if (!document.getElementById('reportModal').classList.contains('show')) clearDraft();
+    });
+
+    document.getElementById('reportModal').addEventListener('hidden.bs.modal', clearDraft);
+
+    function startReport(lat, lng) {
+        document.getElementById('reportLat').value = lat;
+        document.getElementById('reportLng').value = lng;
+
+        const addr = document.getElementById('reportAddress');
+        const hint = document.getElementById('reportAddressHint');
+        addr.value = '';
+        hint.textContent = 'Looking up the address for this pin…';
+        reportModal.show();
+
+        // Reverse geocode with OpenStreetMap Nominatim
+        fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + lat + '&lon=' + lng)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.display_name) {
+                    addr.value = data.display_name;
+                    hint.textContent = 'Filled in from the pin. Edit it if it\u2019s not right.';
+                } else {
+                    hint.textContent = 'We couldn\u2019t find an address. Please type one.';
+                }
+            })
+            .catch(function () {
+                hint.textContent = 'We couldn\u2019t look up the address. Please type one.';
+            });
+    }
+
+    // ---------- Bottom-left control: jump to my location ----------
+    const LocateControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function () {
+            const btn = L.DomUtil.create('button', 'map-fab');
+            btn.type = 'button';
+            btn.title = 'Go to my location';
+            btn.setAttribute('aria-label', 'Go to my location');
+            btn.innerHTML = '<i class="bi bi-crosshair"></i>';
+            L.DomEvent.disableClickPropagation(btn);
+            L.DomEvent.on(btn, 'click', function () { map.locate({ setView: true, maxZoom: 16 }); });
+            return btn;
+        }
+    });
+    map.addControl(new LocateControl());
+
+    let youMarker = null;
+    map.on('locationfound', function (e) {
+        if (youMarker) map.removeLayer(youMarker);
+        youMarker = L.circleMarker(e.latlng, { radius: 8, color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }).addTo(map);
+    });
+    map.on('locationerror', function () {
+        alert('We couldn\u2019t get your location. Check that location access is allowed for this site.');
+    });
+})();
+</script>
+{% endblock %}
