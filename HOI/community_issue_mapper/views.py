@@ -68,3 +68,5 @@ def home(request):
         'q': q,
         'issues': issues_data,
     })
+
+
