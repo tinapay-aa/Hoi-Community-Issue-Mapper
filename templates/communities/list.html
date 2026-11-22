@@ -17,16 +17,30 @@
     <div class="row g-3">
         {% for c in community_list %}
         <div class="col-md-6">
-            <a href="{% url 'community_detail' c.pk %}" class="card h-100 community-card text-decoration-none">
+            <div class="card h-100 community-card position-relative">
                 <div class="card-body">
-                    <h2 class="h5 card-title">{{ c.name }}</h2>
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <h2 class="h5 card-title mb-2">
+                            <a href="{% url 'community_detail' c.pk %}" class="stretched-link text-reset text-decoration-none">{{ c.name }}</a>
+                        </h2>
+                        {% if user.is_authenticated and c.created_by_id == user.id %}
+                        <div class="card-actions">
+                            <a href="{% url 'community_update' c.pk %}" title="Edit community" aria-label="Edit {{ c.name }}">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'community_delete' c.pk %}" class="danger" title="Delete community" aria-label="Delete {{ c.name }}">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
                     <p class="card-text text-muted">{{ c.description|truncatechars:110|default:"No description yet." }}</p>
                     <small class="text-muted">
                         <i class="bi bi-pin-map"></i> {{ c.issue_count }} issue{{ c.issue_count|pluralize }}
                         &middot; <i class="bi bi-people"></i> {{ c.member_count }} member{{ c.member_count|pluralize }}
                     </small>
                 </div>
-            </a>
+            </div>
         </div>
         {% empty %}
         <p class="text-muted">No communities found.</p>

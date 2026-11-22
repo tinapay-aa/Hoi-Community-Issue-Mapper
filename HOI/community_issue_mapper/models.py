@@ -21,6 +21,12 @@ class Community(models.Model):
     def __str__(self):
         return self.name
 
+    def can_be_managed_by(self, user):
+        if not user.is_authenticated:
+            return False
+        if user.is_superuser or self.created_by_id == user.id:
+            return True
+        return self.memberships.filter(user=user, role='Admin').exists()
 
 class CommunityMembership(models.Model):
     ROLE_CHOICES = [
@@ -52,13 +58,6 @@ class CommunityMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.username} @ {self.community.name} ({self.role})"
-    
-    def can_be_managed_by(self, user):
-        if not user.is_authenticated:
-            return False
-        if user.is_superuser or self.created_by_id == user.id:
-            return True
-        return self.memberships.filter(user=user, role='Admin').exists()
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)

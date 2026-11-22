@@ -74,12 +74,22 @@
                         </a>
                     </li>
                     {% for community in communities %}
-                    <li>
+                    <li class="sidebar-item">
                         <a href="{% url 'home' %}?community={{ community.id }}{% if only_mine %}&mine=1{% endif %}"
-                           class="sidebar-link {% if active_community.id == community.id %}active{% endif %}">
+                        class="sidebar-link {% if active_community.id == community.id %}active{% endif %}">
                             <i class="bi bi-geo-alt"></i>
                             <span>{{ community.name }}</span>
                         </a>
+                        {% if user.is_authenticated and community.created_by_id == user.id %}
+                        <span class="sidebar-actions">
+                            <a href="{% url 'community_update' community.pk %}" title="Edit community" aria-label="Edit {{ community.name }}">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'community_delete' community.pk %}" class="danger" title="Delete community" aria-label="Delete {{ community.name }}">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </span>
+                        {% endif %}
                     </li>
                     {% empty %}
                     <li class="sidebar-empty">No communities yet. Create the first one.</li>

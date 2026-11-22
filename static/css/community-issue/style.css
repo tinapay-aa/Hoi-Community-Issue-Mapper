@@ -361,3 +361,30 @@ body {
 .community-card .card-title { color: var(--ink); }
 .flash-stack { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2000; width: min(420px, 92vw); }
 @media (max-width: 991.98px) { .page { padding-top: 4.5rem; } }
+
+/* ---------- Community edit/delete icons ---------- */
+.sidebar-item { display: flex; align-items: center; gap: 2px; }
+.sidebar-item .sidebar-link { flex: 1; min-width: 0; }
+
+.sidebar-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.sidebar-actions a {
+  color: var(--ink-muted);
+  padding: 0.4rem;
+  border-radius: 6px;
+  line-height: 1;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.sidebar-actions a:hover { background: var(--ink-soft); color: #fff; }
+.sidebar-actions a.danger:hover { color: #ff8a8a; }
+
+.card-actions { position: relative; z-index: 2; display: flex; gap: 0.25rem; flex-shrink: 0; }
+.card-actions a {
+  color: #6b7a80;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  line-height: 1;
+  text-decoration: none;
+}
+.card-actions a:hover { background: #eef2f3; color: var(--ink); }
+.card-actions a.danger:hover { background: #fdecec; color: #c62828; }
