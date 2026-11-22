@@ -1,9 +1,4 @@
 :root {
-    .sidebar {
-  --bs-offcanvas-width: var(--sidebar-w);
-  color: var(--ink-text);
-  flex: 0 0 var(--sidebar-w);
-}
   --ink: #0f2f3a;
   --ink-soft: #1a4351;
   --ink-text: #d6e3e8;
@@ -356,3 +351,13 @@ body {
 @media (min-width: 992px) {
   .sidebar-toggle { display: none; }
 }
+
+/* ---------- Content pages ---------- */
+.page { position: absolute; inset: 0; overflow-y: auto; padding: 2rem 1.5rem; }
+.page-inner { max-width: 860px; margin: 0 auto; }
+.page-title { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; }
+.community-card { color: inherit; border: 1px solid #e3e8ea; transition: box-shadow .15s; }
+.community-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); }
+.community-card .card-title { color: var(--ink); }
+.flash-stack { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2000; width: min(420px, 92vw); }
+@media (max-width: 991.98px) { .page { padding-top: 4.5rem; } }
