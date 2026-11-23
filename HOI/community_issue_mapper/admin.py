@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Community, CommunityMembership, Issue, IssueImage, IssueUpdate, Location
+from .models import Category, Community, CommunityMembership, Issue, IssueComment, IssueImage, IssueUpdate, Location
 
 admin.site.register(Community)
 admin.site.register(CommunityMembership)
@@ -41,5 +41,12 @@ class IssueUpdateAdmin(admin.ModelAdmin):
     )
 
     list_filter = ('new_status', 'created_at')
+    ordering = ('-created_at',)
+    list_per_page = 20
+
+@admin.register(IssueComment)
+class IssueCommentAdmin(admin.ModelAdmin):
+    list_display = ('issue', 'author', 'created_at')
+    search_fields = ('body', 'author__username', 'issue__title')
     ordering = ('-created_at',)
     list_per_page = 20

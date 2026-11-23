@@ -39,11 +39,11 @@
         <ul id="commentList" class="comment-list"></ul>
 
         {% if user.is_authenticated %}
-        <form id="commentForm" method="post" action="#"> {# TODO: comment create url #}
+        <form id="commentForm" method="post">
             {% csrf_token %}
-            <input type="hidden" name="issue" id="commentIssueId">
             <label for="commentBody" class="visually-hidden">Add a comment</label>
-            <textarea id="commentBody" name="body" class="form-control" rows="2" placeholder="Add a comment" required></textarea>
+            <textarea id="commentBody" name="body" class="form-control" rows="2" maxlength="1000" placeholder="Add a comment" required></textarea>
+            <div id="commentError" class="text-danger small mt-1" role="alert"></div>
             <button type="submit" class="btn btn-accent mt-2">Post comment</button>
         </form>
         {% else %}
@@ -189,6 +189,107 @@
         map.fitBounds(cluster.getBounds().pad(0.2), { maxZoom: 16 });
     }
 
+    // ---------- Comments (CRUD) ----------
+    const csrfInput = document.querySelector('#commentForm [name=csrfmiddlewaretoken]');
+    const CSRF = csrfInput ? csrfInput.value : '';
+    const URL_CREATE = "{% url 'comment_create' 0 %}";
+    const URL_UPDATE = "{% url 'comment_update' 0 %}";
+    const URL_DELETE = "{% url 'comment_delete' 0 %}";
+    const withId = function (tpl, id) { return tpl.replace('/0/', '/' + id + '/'); };
+
+    const commentList = document.getElementById('commentList');
+    const commentForm = document.getElementById('commentForm');
+    let currentIssue = null;
+
+    function post(url, data) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF },
+            body: new URLSearchParams(data || {})
+        }).then(function (r) {
+            return r.json().then(function (json) {
+                if (!r.ok) throw new Error(json.error || 'Something went wrong.');
+                return json;
+            });
+        });
+    }
+
+    function commentHtml(c) {
+        let actions = '';
+        if (c.can_edit || c.can_delete) {
+            actions = '<span class="comment-actions">' +
+                (c.can_edit ? '<button type="button" data-action="edit">Edit</button>' : '') +
+                (c.can_delete ? '<button type="button" data-action="delete">Delete</button>' : '') +
+                '</span>';
+        }
+        return '<li data-id="' + c.id + '"><strong>' + esc(c.author) + '</strong> <time>' + esc(c.created_at) + '</time>' +
+               (c.edited ? ' <span class="comment-edited">(edited)</span>' : '') + actions +
+               '<p>' + esc(c.body) + '</p></li>';
+    }
+
+    function renderComments(issue) {
+        const comments = issue.comments || [];
+        commentList.innerHTML = comments.length
+            ? comments.map(commentHtml).join('')
+            : '<li class="comment-empty">No comments yet.</li>';
+    }
+
+    // Create
+    if (commentForm) {
+        commentForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const body = document.getElementById('commentBody');
+            const err = document.getElementById('commentError');
+            err.textContent = '';
+            post(withId(URL_CREATE, currentIssue.id), { body: body.value })
+                .then(function (res) {
+                    currentIssue.comments.push(res.comment);
+                    renderComments(currentIssue);
+                    body.value = '';
+                })
+                .catch(function (ex) { err.textContent = ex.message; });
+        });
+    }
+
+    // Edit + Delete (event delegation on the list)
+    commentList.addEventListener('click', function (e) {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const li = btn.closest('li');
+        const id = Number(li.dataset.id);
+        const idx = currentIssue.comments.findIndex(function (c) { return c.id === id; });
+        const comment = currentIssue.comments[idx];
+
+        if (btn.dataset.action === 'delete') {
+            if (!confirm('Delete this comment?')) return;
+            post(withId(URL_DELETE, id))
+                .then(function () {
+                    currentIssue.comments.splice(idx, 1);
+                    renderComments(currentIssue);
+                })
+                .catch(function (ex) { alert(ex.message); });
+
+        } else if (btn.dataset.action === 'edit') {
+            li.innerHTML =
+                '<textarea class="form-control" rows="2" maxlength="1000">' + esc(comment.body) + '</textarea>' +
+                '<div class="mt-2 d-flex gap-2">' +
+                '<button type="button" class="btn btn-accent btn-sm" data-action="save">Save</button>' +
+                '<button type="button" class="btn btn-light btn-sm" data-action="cancel">Cancel</button></div>';
+
+        } else if (btn.dataset.action === 'cancel') {
+            renderComments(currentIssue);
+
+        } else if (btn.dataset.action === 'save') {
+            const text = li.querySelector('textarea').value;
+            post(withId(URL_UPDATE, id), { body: text })
+                .then(function (res) {
+                    currentIssue.comments[idx] = res.comment;
+                    renderComments(currentIssue);
+                })
+                .catch(function (ex) { alert(ex.message); });
+        }
+    });
+
     // ---------- Issue details panel ----------
     function openIssue(issue) {
         const badge = document.getElementById('issueStatus');
@@ -206,24 +307,22 @@
 
         document.getElementById('issueImages').innerHTML = (issue.images || []).map(function (img) {
             return '<figure><img src="' + esc(img.url) + '" alt="' + esc(img.type) + ' photo for ' + esc(issue.title) + '">' +
-                   '<figcaption>' + esc(img.type) + '</figcaption></figure>';
+                   '<figcaption>' + esc(img.type) +
+                   ' <a class="image-download" href="' + esc(img.url) + '" download title="Download photo" aria-label="Download photo">' +
+                   '<i class="bi bi-download"></i></a></figcaption></figure>';
         }).join('');
 
-        const comments = issue.comments || [];
-        document.getElementById('commentList').innerHTML = comments.length
-            ? comments.map(function (c) {
-                return '<li><strong>' + esc(c.author) + '</strong> <time>' + esc(c.created_at) + '</time><p>' + esc(c.body) + '</p></li>';
-              }).join('')
-            : '<li class="comment-empty">No comments yet.</li>';
+        currentIssue = issue;
+        renderComments(issue);
+        const err = document.getElementById('commentError');
+        if (err) err.textContent = '';
 
-        const idField = document.getElementById('commentIssueId');
-        if (idField) idField.value = issue.id;
-
+        // can_edit covers the reporter, community managers and staff (set in views.home)
         document.getElementById('issueActions').innerHTML =
             '<a class="btn btn-primary btn-sm" href="' + esc(issue.detail_url) + '">Open page</a>' +
-            (issue.is_owner
+            (issue.can_edit
                 ? ' <a class="btn btn-accent btn-sm" href="' + esc(issue.edit_url) + '">Edit</a>' +
-                ' <a class="btn btn-outline-danger btn-sm" href="' + esc(issue.delete_url) + '">Delete</a>'
+                  ' <a class="btn btn-outline-danger btn-sm" href="' + esc(issue.delete_url) + '">Delete</a>'
                 : '');
 
         panel.show();

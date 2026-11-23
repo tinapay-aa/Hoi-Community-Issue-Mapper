@@ -402,3 +402,14 @@ body {
   background: var(--ink);
   color: #fff;
 }
+
+.comment-actions { margin-left: 0.5rem; }
+.comment-actions button {
+  background: none;
+  border: none;
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+  color: #6b7a80;
+}
+.comment-actions button:hover { color: var(--ink); text-decoration: underline; }
+.comment-edited { font-size: 0.75rem; color: #6b7a80; }

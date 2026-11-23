@@ -1,6 +1,6 @@
 from django import forms
 from django.db import transaction
-from .models import Community, Issue, IssueImage, Location
+from .models import Community, Issue, IssueImage, Location, IssueComment
 
 class CommunityForm(forms.ModelForm):
     class Meta:
@@ -113,3 +113,8 @@ class IssueStatusForm(forms.Form):
         ):
             self.add_error('proof_image', 'Attach a photo as proof before marking this issue resolved.')
         return data
+
+class IssueCommentForm(forms.ModelForm):
+    class Meta:
+        model = IssueComment
+        fields = ['body']

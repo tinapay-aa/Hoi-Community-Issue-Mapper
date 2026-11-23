@@ -15,4 +15,8 @@ urlpatterns = [
     path('issues/<int:pk>/edit/', views.issue_update, name='issue_update'),
     path('issues/<int:pk>/delete/', views.issue_delete, name='issue_delete'),
     path('issues/<int:pk>/status/', views.issue_status, name='issue_status'),
+    
+    path('issues/<int:issue_id>/comments/create/', views.comment_create, name='comment_create'),
+    path('comments/<int:pk>/update/', views.comment_update, name='comment_update'),
+    path('comments/<int:pk>/delete/', views.comment_delete, name='comment_delete'),
 ]
