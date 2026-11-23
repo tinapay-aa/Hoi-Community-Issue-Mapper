@@ -388,3 +388,17 @@ body {
 }
 .card-actions a:hover { background: #eef2f3; color: var(--ink); }
 .card-actions a.danger:hover { background: #fdecec; color: #c62828; }
+
+.issue-actions { display: flex; gap: .5rem; margin: 1rem 0; }
+
+.btn-outline-ink {
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.btn-outline-ink:hover {
+  background: var(--ink);
+  color: #fff;
+}

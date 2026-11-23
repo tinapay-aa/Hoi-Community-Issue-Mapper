@@ -1,6 +1,10 @@
 from django.contrib import admin
-from .models import Category, Issue, IssueUpdate
+from .models import Category, Community, CommunityMembership, Issue, IssueImage, IssueUpdate, Location
 
+admin.site.register(Community)
+admin.site.register(CommunityMembership)
+admin.site.register(Location)
+admin.site.register(IssueImage)
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

@@ -1,22 +1,21 @@
 from django.db.models import Q
-from django.shortcuts import render
-
-from .models import Category, Community, Issue
+from django.shortcuts import render, redirect, get_object_or_404
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db import transaction
-from django.db.models import Count, Q
-from django.http import Http404
-from django.shortcuts import redirect, render
+from django.http import Http404, HttpResponseForbidden
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, UpdateView,
 )
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 
-from .forms import CommunityForm
-from .models import Category, Community, CommunityMembership, Issue
+from .forms import CommunityForm, IssueStatusForm, IssueForm
+from .models import Category, Community, CommunityMembership, Issue, IssueUpdate
 
+MANAGER_ROLES = ('Moderator', 'Admin')
 
 def home(request):
     communities = Community.objects.filter(is_active=True)
@@ -69,6 +68,7 @@ def home(request):
                 {'url': img.image.url, 'type': img.image_type}
                 for img in issue.images.all()
             ],
+            'is_owner': user.is_authenticated and issue.reported_by_id == user.id,
             'comments': [],  # TODO: fill in once an IssueComment model exists
         }
         for issue in issues
@@ -174,3 +174,213 @@ class CommunityDeleteView(CommunityManagerMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, f'“{self.object.name}” was deleted.')
         return super().form_valid(form)
+
+def managed_community_ids(user):
+    """Communities this user moderates/admins/created. One query set, reused per request."""
+    if not user.is_authenticated:
+        return set()
+    member = CommunityMembership.objects.filter(user=user, role__in=MANAGER_ROLES)
+    created = Community.objects.filter(created_by=user)
+    return set(member.values_list('community_id', flat=True)) | set(created.values_list('id', flat=True))
+ 
+ 
+def is_manager(user, issue):
+    return user.is_authenticated and (user.is_staff or issue.community_id in managed_community_ids(user))
+ 
+ 
+def is_owner(user, issue):
+    return user.is_authenticated and issue.reported_by_id == user.id
+ 
+ 
+def can_edit(user, issue):
+    return is_owner(user, issue) or is_manager(user, issue)
+ 
+ 
+# ---------- Map ----------
+def home(request):
+    communities = Community.objects.filter(is_active=True)
+    categories = Category.objects.all()
+ 
+    issues = (
+        Issue.objects
+        .select_related('category', 'community', 'reported_by', 'location')
+        .prefetch_related('images')
+    )
+ 
+    active_community = None
+    community_id = request.GET.get('community')
+    if community_id and community_id.isdigit():
+        active_community = communities.filter(pk=community_id).first()
+        if active_community:
+            issues = issues.filter(community=active_community)
+ 
+    only_mine = request.GET.get('mine') == '1' and request.user.is_authenticated
+    if only_mine:
+        issues = issues.filter(reported_by=request.user)
+ 
+    q = request.GET.get('q', '').strip()
+    if q:
+        issues = issues.filter(
+            Q(title__icontains=q)
+            | Q(description__icontains=q)
+            | Q(location__address__icontains=q)
+        )
+ 
+    user = request.user
+    managed = managed_community_ids(user)
+ 
+    issues_data = [
+        {
+            'id': issue.id,
+            'title': issue.title,
+            'description': issue.description,
+            'status': issue.status,
+            'priority': issue.priority,
+            'category': issue.category.name,
+            'community': issue.community.name,
+            'reported_by': issue.reported_by.username,
+            'created_at': issue.created_at.strftime('%b %d, %Y'),
+            'latitude': float(issue.location.latitude),
+            'longitude': float(issue.location.longitude),
+            'address': issue.location.address,
+            'images': [
+                {'url': img.image.url, 'type': img.image_type}
+                for img in issue.images.all()
+            ],
+            'comments': [],  # TODO: fill in once an IssueComment model exists
+            'detail_url': reverse('issue_detail', args=[issue.id]),
+            'edit_url': reverse('issue_update', args=[issue.id]),
+            'delete_url': reverse('issue_delete', args=[issue.id]),
+            'can_edit': user.is_authenticated and (
+                user.is_staff or issue.reported_by_id == user.id or issue.community_id in managed
+            ),
+        }
+        for issue in issues
+    ]
+ 
+    return render(request, 'home.html', {
+        'communities': communities,
+        'categories': categories,
+        'active_community': active_community,
+        'only_mine': only_mine,
+        'q': q,
+        'issues': issues_data,
+    })
+ 
+ 
+# ---------- Create ----------
+@login_required
+def issue_create(request):
+    if request.method == 'POST':
+        form = IssueForm(request.POST, request.FILES)
+        if form.is_valid():
+            issue = form.save(user=request.user)
+            messages.success(request, 'Your issue has been reported.')
+            return redirect('issue_detail', pk=issue.pk)
+    else:
+        lat, lng = request.GET.get('lat'), request.GET.get('lng')
+        if not (lat and lng):
+            messages.info(request, 'Click a spot on the map to report an issue.')
+            return redirect('home')
+        form = IssueForm(initial={'latitude': lat, 'longitude': lng})
+ 
+    return render(request, 'Issues/issue_form.html', {'form': form, 'issue': None})
+ 
+ 
+# ---------- Read ----------
+def _render_detail(request, issue, status_form=None):
+    user = request.user
+    manager = is_manager(user, issue)
+    editable = is_owner(user, issue) or manager
+    if editable and status_form is None:
+        status_form = IssueStatusForm(issue=issue, manager=manager)
+    return render(request, 'Issues/issue_detail.html', {
+        'issue': issue,
+        'images': issue.images.all(),
+        'updates': issue.updates.select_related('updated_by'),
+        'can_edit': editable,
+        'is_manager': manager,
+        'status_form': status_form,
+    })
+ 
+ 
+def issue_detail(request, pk):
+    issue = get_object_or_404(
+        Issue.objects.select_related('category', 'community', 'reported_by', 'location'),
+        pk=pk,
+    )
+    return _render_detail(request, issue)
+ 
+ 
+# ---------- Update ----------
+@login_required
+def issue_update(request, pk):
+    issue = get_object_or_404(Issue.objects.select_related('location'), pk=pk)
+    if not can_edit(request.user, issue):
+        return HttpResponseForbidden('You can only edit your own issues.')
+ 
+    if request.method == 'POST':
+        form = IssueForm(request.POST, request.FILES, instance=issue)
+        if form.is_valid():
+            form.save(user=request.user)
+            messages.success(request, 'Issue updated.')
+            return redirect('issue_detail', pk=issue.pk)
+    else:
+        form = IssueForm(instance=issue)
+ 
+    return render(request, 'Issues/issue_form.html', {'form': form, 'issue': issue})
+ 
+ 
+@login_required
+@require_POST
+def issue_status(request, pk):
+    """Status change + history entry. Resolving requires a proof photo."""
+    issue = get_object_or_404(
+        Issue.objects.select_related('category', 'community', 'reported_by', 'location'),
+        pk=pk,
+    )
+    if not can_edit(request.user, issue):
+        return HttpResponseForbidden()
+ 
+    manager = is_manager(request.user, issue)
+    form = IssueStatusForm(request.POST, request.FILES, issue=issue, manager=manager)
+    if not form.is_valid():
+        return _render_detail(request, issue, status_form=form)
+ 
+    with transaction.atomic():
+        proof = form.cleaned_data.get('proof_image')
+        if proof:
+            IssueImage.objects.create(
+                issue=issue, uploaded_by=request.user,
+                image=proof, image_type='Resolution Proof',
+            )
+        previous = issue.status
+        issue.status = form.cleaned_data['status']
+        if manager and form.cleaned_data.get('priority'):
+            issue.priority = form.cleaned_data['priority']
+        issue.save()
+        IssueUpdate.objects.create(
+            issue=issue, updated_by=request.user,
+            previous_status=previous, new_status=issue.status,
+            remarks=form.cleaned_data.get('remarks', ''),
+        )
+ 
+    messages.success(request, f'Status set to {issue.status}.')
+    return redirect('issue_detail', pk=issue.pk)
+ 
+ 
+# ---------- Delete ----------
+@login_required
+def issue_delete(request, pk):
+    issue = get_object_or_404(Issue.objects.select_related('location'), pk=pk)
+    if not can_edit(request.user, issue):
+        return HttpResponseForbidden('You can only delete your own issues.')
+ 
+    if request.method == 'POST':
+        # Issue.location is a OneToOne with CASCADE, so deleting the Location
+        # removes the Issue (and its images/updates) and leaves no orphan row.
+        issue.location.delete()
+        messages.success(request, 'Issue deleted.')
+        return redirect('home')
+ 
+    return render(request, 'Issues/issue_confirm_delete.html', {'issue': issue})
