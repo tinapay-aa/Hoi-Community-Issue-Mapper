@@ -1,0 +1,55 @@
+{% extends "allauth/layouts/entrance.html" %}
+
+{% load allauth %}
+{% load socialaccount %}
+
+{% block head_title %}Sign Up{% endblock head_title %}
+
+{% block content %}
+    <div class="inner-container">
+
+        <h1>Create your account</h1>
+        <p class="auth-sub">Join your community on Hoi!</p>
+
+        <form method="post" action="{% url 'account_signup' %}">
+            {% csrf_token %}
+            {{ redirect_field }}
+
+            {{ form.non_field_errors }}
+
+            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+            {% for field in form.visible_fields %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+
+            <div class="form-lower-section">
+                <button id="submit-button" type="submit">Create Account</button>
+            </div>
+        </form>
+
+        <div class="lower-section">
+            <a href="{% url 'account_login' %}">
+                Already have an account? Sign in
+            </a>
+
+            {% get_providers as socialaccount_providers %}
+            {% if socialaccount_providers %}
+                <div class="auth-divider"><span>or continue with</span></div>
+                <div class="social-login">
+                    {% for provider in socialaccount_providers %}
+                        <a href="{% provider_login_url provider process='login' %}" title="{{ provider.name }}">
+                            <i class="bi bi-{{ provider.id }}" aria-hidden="true"></i>
+                            <span>{{ provider.name }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+{% endblock %}

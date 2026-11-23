@@ -1,0 +1,40 @@
+{% extends "allauth/layouts/entrance.html" %}
+
+{% load allauth %}
+
+{% block head_title %}Sign Up{% endblock head_title %}
+
+{% block content %}
+    <div class="inner-container">
+
+        <h1>One last step</h1>
+
+        <p class="auth-sub">
+            You are about to use your <strong>{{ account.get_provider.name }}</strong> account
+            to log in to {{ site.name|default:"Hoi!" }}. Please complete the form below to finish.
+        </p>
+
+        <form method="post" action="{% url 'socialaccount_signup' %}">
+            {% csrf_token %}
+            {{ redirect_field }}
+
+            {{ form.non_field_errors }}
+
+            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+            {% for field in form.visible_fields %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+
+            <div class="form-lower-section">
+                <button id="submit-button" type="submit">Sign Up</button>
+                <a id="cancel-button" href="{% url 'account_login' %}">Cancel</a>
+            </div>
+        </form>
+
+    </div>
+{% endblock %}

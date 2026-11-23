@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/community-issue/style.css' %}" rel="stylesheet">
     {% block extra-head %}{% endblock %}
 </head>
 <body>
@@ -45,9 +45,9 @@
             {# Communities #}
             <section class="sidebar-section">
                 <div class="sidebar-heading">
-                    <h2>Communities</h2>
+                    <h2><a href="{% url 'community_list' %}" class="text-reset text-decoration-none">Communities</a></h2>
                     {% if user.is_authenticated %}
-                    <a href="#" {# TODO: link to community_create #}
+                    <a href="{% url 'community_create' %}"
                        class="btn-new"
                        data-bs-toggle="tooltip" data-bs-placement="right"
                        title="Don't see your community? Create your own."
@@ -55,7 +55,7 @@
                         <i class="bi bi-plus-lg"></i> New
                     </a>
                     {% else %}
-                    <a href="#" {# TODO: link to login #}
+                    <a href="{% url 'account_login' %}"
                        class="btn-new"
                        data-bs-toggle="tooltip" data-bs-placement="right"
                        title="Log in to create your own community."
@@ -74,12 +74,22 @@
                         </a>
                     </li>
                     {% for community in communities %}
-                    <li>
-                        <a href="?community={{ community.id }}{% if only_mine %}&mine=1{% endif %}"
-                           class="sidebar-link {% if active_community.id == community.id %}active{% endif %}">
+                    <li class="sidebar-item">
+                        <a href="{% url 'home' %}?community={{ community.id }}{% if only_mine %}&mine=1{% endif %}"
+                        class="sidebar-link {% if active_community.id == community.id %}active{% endif %}">
                             <i class="bi bi-geo-alt"></i>
                             <span>{{ community.name }}</span>
                         </a>
+                        {% if user.is_authenticated and community.created_by_id == user.id %}
+                        <span class="sidebar-actions">
+                            <a href="{% url 'community_update' community.pk %}" title="Edit community" aria-label="Edit {{ community.name }}">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'community_delete' community.pk %}" class="danger" title="Delete community" aria-label="Delete {{ community.name }}">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </span>
+                        {% endif %}
                     </li>
                     {% empty %}
                     <li class="sidebar-empty">No communities yet. Create the first one.</li>
@@ -92,7 +102,7 @@
                 <div class="sidebar-heading"><h2>Issues</h2></div>
                 <ul class="sidebar-list">
                     <li>
-                        <a href="?{% if active_community %}community={{ active_community.id }}{% endif %}"
+                        <a href="{% url 'home' %}?{% if active_community %}community={{ active_community.id }}{% endif %}"
                            class="sidebar-link {% if not only_mine %}active{% endif %}">
                             <i class="bi bi-pin-map"></i>
                             <span>All issues</span>
@@ -100,7 +110,7 @@
                     </li>
                     {% if user.is_authenticated %}
                     <li>
-                        <a href="?mine=1{% if active_community %}&community={{ active_community.id }}{% endif %}"
+                        <a href="{% url 'home' %}?mine=1{% if active_community %}&community={{ active_community.id }}{% endif %}"
                            class="sidebar-link {% if only_mine %}active{% endif %}">
                             <i class="bi bi-person-check"></i>
                             <span>Reported by me</span>
@@ -112,16 +122,20 @@
 
             {# Footer: settings + profile #}
             <div class="sidebar-footer">
-                <a href="#" class="sidebar-link"> {# TODO: settings url #}
+                {% if user.is_authenticated %}
+                <a href="{% url 'profile_settings' %}" class="sidebar-link">
                     <i class="bi bi-gear"></i><span>Settings</span>
                 </a>
 
-                {% if user.is_authenticated %}
                 <div class="profile">
-                    <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
+                    {% if user.profile.avatar %}
+                        <img src="{{ user.profile.avatar.url }}" alt="" class="avatar avatar-img">
+                    {% else %}
+                        <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
+                    {% endif %}
                     <div class="profile-text">
-                        <a href="#" class="profile-name">{{ user.username }}</a> {# TODO: profile url #}
-                        <a href="#" class="profile-link">Profile settings</a> {# TODO: profile settings url #}
+                        <a href="{% url 'profile_settings' %}" class="profile-name">{{ user.username }}</a>
+                        <a href="{% url 'profile_settings' %}" class="profile-link">Profile settings</a>
                     </div>
                 </div>
                 {% else %}
@@ -130,8 +144,8 @@
                     <div class="profile-text">
                         <span class="profile-name">Guest</span>
                         <span class="profile-link-row">
-                            <a href="#" class="profile-link">Log in</a> {# TODO: login url #}
-                            <a href="#" class="profile-link">Sign up</a> {# TODO: signup url #}
+                            <a href="{% url 'account_login' %}" class="profile-link">Log in</a>
+                            <a href="{% url 'account_signup' %}" class="profile-link">Sign up</a>
                         </span>
                     </div>
                 </div>
@@ -141,6 +155,16 @@
     </aside>
 
     <main class="app-main">
+        {% if messages %}
+        <div class="flash-stack">
+            {% for m in messages %}
+            <div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+                {{ m }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% block main-content %}{% endblock %}
     </main>
 </div>

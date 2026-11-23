@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ object.name }}{% endblock %}
+
+{% block main-content %}
+<div class="page"><div class="page-inner" style="max-width:560px">
+    <h1 class="page-title">Delete “{{ object.name }}”?</h1>
+
+    {% if issue_count %}
+    <div class="alert alert-warning">
+        This will also permanently delete <strong>{{ issue_count }} issue{{ issue_count|pluralize }}</strong>
+        (with their photos and updates) reported in this community. To hide it instead, edit it and untick “Active”.
+    </div>
+    {% else %}
+    <p class="text-muted">This can’t be undone.</p>
+    {% endif %}
+
+    <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, delete</button>
+        <a href="{% url 'community_detail' object.pk %}" class="btn btn-light">Cancel</a>
+    </form>
+</div></div>
+{% endblock %}
