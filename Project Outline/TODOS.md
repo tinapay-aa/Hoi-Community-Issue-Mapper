@@ -1,0 +1,6 @@
+- [ ] CRUD for all models
+- [x] Social Logins
+- [x] Logins
+- [ ] PWA
+- [ ] Deployment
+- [ ] Readme improvement

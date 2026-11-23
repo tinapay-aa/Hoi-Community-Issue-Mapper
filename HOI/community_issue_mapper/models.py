@@ -4,7 +4,6 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
-
 class Community(models.Model):
     name = models.CharField(max_length=150, unique=True)
     description = models.TextField(blank=True)
@@ -24,6 +23,12 @@ class Community(models.Model):
     def __str__(self):
         return self.name
 
+    def can_be_managed_by(self, user):
+        if not user.is_authenticated:
+            return False
+        if user.is_superuser or self.created_by_id == user.id:
+            return True
+        return self.memberships.filter(user=user, role='Admin').exists()
 
 class CommunityMembership(models.Model):
     ROLE_CHOICES = [
@@ -55,7 +60,6 @@ class CommunityMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.username} @ {self.community.name} ({self.role})"
-
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -176,6 +180,27 @@ class IssueUpdate(models.Model):
 
     def __str__(self):
         return f"{self.issue.title} - {self.new_status}"
+    
+class IssueComment(models.Model):
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='issue_comments'
+    )
+    body = models.TextField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.author.username} on {self.issue.title}"
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')

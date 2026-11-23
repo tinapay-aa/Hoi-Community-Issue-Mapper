@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Delete issue{% endblock %}
+
+{% block main-content %}
+<div class="page-scroll">
+  <div class="page-card">
+    <h1>Delete this issue?</h1>
+    <p><strong>{{ issue.title }}</strong> and its photos and history will be removed permanently.</p>
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Yes, delete</button>
+      <a class="btn btn-light" href="{% url 'issue_detail' issue.pk %}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

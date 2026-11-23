@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ community.name }}{% endblock %}
+
+{% block main-content %}
+<div class="page"><div class="page-inner">
+    <a href="{% url 'community_list' %}" class="small text-muted text-decoration-none"><i class="bi bi-arrow-left"></i> All communities</a>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mt-2 mb-3">
+        <div>
+            <h1 class="page-title mb-1">{{ community.name }}</h1>
+            {% if not community.is_active %}<span class="badge text-bg-secondary">Archived</span>{% endif %}
+        </div>
+        {% if can_manage %}
+        <div class="d-flex gap-2">
+            <a href="{% url 'community_update' community.pk %}" class="btn btn-light"><i class="bi bi-pencil"></i> Edit</a>
+            <a href="{% url 'community_delete' community.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <p class="issue-description">{{ community.description|default:"No description yet."|linebreaksbr }}</p>
+
+    <p class="text-muted small">
+        Created {{ community.created_at|date:"M d, Y" }}{% if community.created_by %} by {{ community.created_by.username }}{% endif %}
+        &middot; {{ member_count }} member{{ member_count|pluralize }}
+        &middot; {{ issue_count }} issue{{ issue_count|pluralize }}
+    </p>
+
+    <a href="{% url 'home' %}?community={{ community.pk }}" class="btn btn-accent mb-4"><i class="bi bi-map"></i> View on map</a>
+
+    <h2 class="panel-subheading">Recent issues</h2>
+    <ul class="list-group">
+        {% for issue in recent_issues %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ issue.title }} <small class="text-muted">&middot; {{ issue.category.name }}</small></span>
+            <span class="badge text-bg-light">{{ issue.status }}</span>
+        </li>
+        {% empty %}
+        <li class="list-group-item text-muted">No issues reported here yet.</li>
+        {% endfor %}
+    </ul>
+</div></div>
+{% endblock %}

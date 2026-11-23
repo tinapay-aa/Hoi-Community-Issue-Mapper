@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Communities{% endblock %}
+
+{% block main-content %}
+<div class="page"><div class="page-inner">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="page-title mb-0">Communities</h1>
+        {% if user.is_authenticated %}
+        <a href="{% url 'community_create' %}" class="btn btn-accent"><i class="bi bi-plus-lg"></i> New community</a>
+        {% endif %}
+    </div>
+
+    <form method="get" class="mb-4" role="search">
+        <input type="search" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Search communities" aria-label="Search communities">
+    </form>
+
+    <div class="row g-3">
+        {% for c in community_list %}
+        <div class="col-md-6">
+            <div class="card h-100 community-card position-relative">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <h2 class="h5 card-title mb-2">
+                            <a href="{% url 'community_detail' c.pk %}" class="stretched-link text-reset text-decoration-none">{{ c.name }}</a>
+                        </h2>
+                        {% if user.is_authenticated and c.created_by_id == user.id %}
+                        <div class="card-actions">
+                            <a href="{% url 'community_update' c.pk %}" title="Edit community" aria-label="Edit {{ c.name }}">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'community_delete' c.pk %}" class="danger" title="Delete community" aria-label="Delete {{ c.name }}">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <p class="card-text text-muted">{{ c.description|truncatechars:110|default:"No description yet." }}</p>
+                    <small class="text-muted">
+                        <i class="bi bi-pin-map"></i> {{ c.issue_count }} issue{{ c.issue_count|pluralize }}
+                        &middot; <i class="bi bi-people"></i> {{ c.member_count }} member{{ c.member_count|pluralize }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-muted">No communities found.</p>
+        {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-4 d-flex justify-content-between" aria-label="Pagination">
+        {% if page_obj.has_previous %}<a class="btn btn-light" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">Previous</a>{% else %}<span></span>{% endif %}
+        <span class="align-self-center text-muted">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a class="btn btn-light" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">Next</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
+</div></div>
+{% endblock %}

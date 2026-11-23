@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ issue.title }}{% endblock %}
+
+{% block main-content %}
+<div class="page-scroll">
+  <div class="page-card">
+    <span class="badge status-badge status-{{ issue.status|slugify }}">{{ issue.status }}</span>
+    <h1 class="mt-2">{{ issue.title }}</h1>
+
+    <dl class="issue-meta">
+      <div><dt>Category</dt><dd>{{ issue.category.name }}</dd></div>
+      <div><dt>Priority</dt><dd>{{ issue.priority }}</dd></div>
+      <div><dt>Community</dt><dd>{{ issue.community.name }}</dd></div>
+      <div><dt>Reported by</dt><dd>{{ issue.reported_by.username }}</dd></div>
+      <div><dt>Reported on</dt><dd>{{ issue.created_at|date:"M d, Y" }}</dd></div>
+      <div><dt>Last updated</dt><dd>{{ issue.updated_at|date:"M d, Y" }}</dd></div>
+      <div class="full"><dt>Location</dt><dd>{{ issue.location.address }}</dd></div>
+    </dl>
+
+    {% if images %}
+    <div class="issue-images">
+      {% for img in images %}
+      <figure><img src="{{ img.image.url }}" alt="{{ img.image_type }} photo for {{ issue.title }}"><figcaption>{{ img.image_type }}</figcaption></figure>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <p class="issue-description">{{ issue.description|linebreaksbr }}</p>
+
+    <div class="d-flex gap-2 mb-4">
+      <a class="btn btn-light" href="{% url 'home' %}?community={{ issue.community_id }}">Back to map</a>
+      {% if can_edit %}
+      <a class="btn btn-accent" href="{% url 'issue_update' issue.pk %}">Edit</a>
+      <a class="btn btn-outline-danger" href="{% url 'issue_delete' issue.pk %}">Delete</a>
+      {% endif %}
+    </div>
+
+    {% if can_edit and status_form %}
+    <h2 class="panel-subheading">{% if is_manager %}Update status{% else %}Mark as resolved{% endif %}</h2>
+    <form method="post" action="{% url 'issue_status' issue.pk %}" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {{ status_form.non_field_errors }}
+      {% for field in status_form %}
+      <div class="mb-3">
+        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        {% if field.name == 'proof_image' %}<div class="form-text">Required when marking an issue as Resolved.</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-accent">Save</button>
+    </form>
+    {% endif %}
+
+    <h2 class="panel-subheading">History</h2>
+    <ul class="comment-list">
+      {% for u in updates %}
+      <li>
+        <strong>{{ u.updated_by.username|default:"Someone" }}</strong>
+        {% if u.previous_status %}{{ u.previous_status }} &rarr; {% endif %}{{ u.new_status }}
+        <time>{{ u.created_at|date:"M d, Y H:i" }}</time>
+        {% if u.remarks %}<p>{{ u.remarks }}</p>{% endif %}
+      </li>
+      {% empty %}
+      <li class="comment-empty">No status changes yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
