@@ -430,3 +430,17 @@ def comment_delete(request, pk):
 
     comment.delete()
     return JsonResponse({'deleted': pk})
+
+def manifest(request):
+    return render(request, 'pwa/manifest.webmanifest',
+                  content_type='application/manifest+json')
+
+
+def service_worker(request):
+    resp = render(request, 'pwa/sw.js', content_type='application/javascript')
+    resp['Cache-Control'] = 'no-cache'   # browser should always re-check the SW file
+    return resp
+
+
+def offline(request):
+    return render(request, 'pwa/offline.html')

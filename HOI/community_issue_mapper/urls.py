@@ -21,4 +21,7 @@ urlpatterns = [
     path('comments/<int:pk>/delete/', views.comment_delete, name='comment_delete'),
     
     path('settings/', views.profile_settings, name='profile_settings'),
+    path('manifest.webmanifest', views.manifest, name='manifest'),
+    path('sw.js', views.service_worker, name='service_worker'),
+    path('offline/', views.offline, name='offline'),
 ]
