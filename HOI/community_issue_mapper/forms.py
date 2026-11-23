@@ -25,7 +25,9 @@ class ProfileForm(forms.ModelForm):
         avatar = self.cleaned_data.get('avatar')
         if avatar and hasattr(avatar, 'size') and avatar.size > 2 * 1024 * 1024:
             raise forms.ValidationError('Please upload an image under 2 MB.')
-        return avatarclass CommunityForm(forms.ModelForm):
+        return avatar
+
+class CommunityForm(forms.ModelForm):
     class Meta:
         model = Community
         fields = ['name', 'description', 'is_active']
