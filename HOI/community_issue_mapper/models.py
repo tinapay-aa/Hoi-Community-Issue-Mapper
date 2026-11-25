@@ -15,6 +15,8 @@ class Community(models.Model):
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
 
     class Meta:
         verbose_name_plural = 'communities'
