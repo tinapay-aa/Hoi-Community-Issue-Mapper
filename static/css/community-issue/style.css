@@ -261,17 +261,25 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
-.issue-cluster {
+.leaflet-marker-icon.issue-cluster {
+  box-sizing: border-box;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
   background: var(--ink);
   color: #fff;
   border: 4px solid var(--accent);
   border-radius: 50%;
-  display: grid;
-  place-items: center;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1rem;
+  line-height: 1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.leaflet-marker-icon.issue-cluster span {
+  display: block;
+  line-height: 1;
 }
 
 .report-prompt {
