@@ -137,6 +137,13 @@ def home(request):
         }
         for issue in issues
     ]
+    
+    community_center = None
+    if active_community and active_community.latitude is not None and active_community.longitude is not None:
+        community_center = {
+            'lat': float(active_community.latitude),
+            'lng': float(active_community.longitude),
+        }
 
     return render(request, 'home.html', {
         'communities': communities,
@@ -145,6 +152,7 @@ def home(request):
         'only_mine': only_mine,
         'q': q,
         'issues': issues_data,
+        'community_center': community_center,
     })
 
 @login_required

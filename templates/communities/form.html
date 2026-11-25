@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{% if object %}Edit {{ object.name }}{% else %}New community{% endif %}{% endblock %}
 
+{% block extra-head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
 {% block main-content %}
 <div class="page"><div class="page-inner" style="max-width:640px">
     <h1 class="page-title">{% if object %}Edit community{% else %}Create a community{% endif %}</h1>
@@ -8,6 +12,7 @@
     <form method="post" novalidate>
         {% csrf_token %}
         {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+        {{ form.latitude }}{{ form.longitude }}
 
         <div class="mb-3">
             <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
@@ -19,6 +24,19 @@
             <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
             {{ form.description }}
             {% for e in form.description.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label for="placeSearch" class="form-label">Location</label>
+            <div class="input-group mb-2">
+                <input type="search" id="placeSearch" class="form-control" placeholder="Search a place, e.g. Jaro, Iloilo City">
+                <button type="button" id="placeSearchBtn" class="btn btn-light">Search</button>
+            </div>
+            <div id="locationPicker" style="height:300px;border-radius:12px;border:1px solid #e3e8ea"></div>
+            <div class="d-flex justify-content-between mt-1">
+                <div class="form-text" id="locationHint">Click the map to set where this community is. Optional.</div>
+                <button type="button" id="clearLocation" class="btn btn-link btn-sm p-0">Clear</button>
+            </div>
         </div>
 
         {% if form.is_active %}
@@ -34,4 +52,71 @@
         </div>
     </form>
 </div></div>
+{% endblock %}
+
+{% block extra-js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    const latEl = document.getElementById('id_latitude');
+    const lngEl = document.getElementById('id_longitude');
+    const hint = document.getElementById('locationHint');
+    const hasStart = latEl.value && lngEl.value;
+    const start = hasStart ? [parseFloat(latEl.value), parseFloat(lngEl.value)] : [10.7202, 122.5621];
+
+    const map = L.map('locationPicker').setView(start, hasStart ? 14 : 11);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    let marker = null;
+
+    function setPoint(latlng, pan) {
+        latEl.value = latlng.lat.toFixed(7);
+        lngEl.value = latlng.lng.toFixed(7);
+        if (marker) {
+            marker.setLatLng(latlng);
+        } else {
+            marker = L.marker(latlng, { draggable: true }).addTo(map);
+            marker.on('dragend', function () { setPoint(marker.getLatLng(), false); });
+        }
+        if (pan) map.setView(latlng, Math.max(map.getZoom(), 14));
+        hint.textContent = 'Location set. Drag the pin or click elsewhere to adjust.';
+    }
+
+    if (hasStart) setPoint(L.latLng(start), false);
+
+    map.on('click', function (e) { setPoint(e.latlng, false); });
+
+    document.getElementById('clearLocation').addEventListener('click', function () {
+        if (marker) { map.removeLayer(marker); marker = null; }
+        latEl.value = '';
+        lngEl.value = '';
+        hint.textContent = 'Click the map to set where this community is. Optional.';
+    });
+
+    // Search with OpenStreetMap Nominatim
+    const searchEl = document.getElementById('placeSearch');
+    function search() {
+        const q = searchEl.value.trim();
+        if (!q) return;
+        hint.textContent = 'Searching…';
+        fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (results) {
+                if (results.length) {
+                    setPoint(L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon)), true);
+                } else {
+                    hint.textContent = 'No match found. Try another search or click the map.';
+                }
+            })
+            .catch(function () { hint.textContent = 'Search failed. Click the map instead.'; });
+    }
+    document.getElementById('placeSearchBtn').addEventListener('click', search);
+    searchEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); search(); }
+    });
+})();
+</script>
 {% endblock %}

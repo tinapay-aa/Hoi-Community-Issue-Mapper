@@ -114,6 +114,7 @@
 
 {# Issue data for the map (rendered safely by Django) #}
 {{ issues|json_script:"issues-data" }}
+{{ community_center|json_script:"community-center" }}
 {% endblock %}
 
 {% block extra-js %}
@@ -123,6 +124,7 @@
 (function () {
     const IS_AUTH = document.getElementById('map').dataset.auth === 'true';
     const issues = JSON.parse(document.getElementById('issues-data').textContent);
+    const communityCenter = JSON.parse(document.getElementById('community-center').textContent);
     const DEFAULT_CENTER = [14.5995, 120.9842];   // fallback view when there are no issues
     const DEFAULT_ZOOM = 12;
 
@@ -185,7 +187,9 @@
     });
     map.addLayer(cluster);
 
-    if (issues.length) {
+    if (communityCenter) {
+        map.setView([communityCenter.lat, communityCenter.lng], 14);
+    } else if (issues.length) {
         map.fitBounds(cluster.getBounds().pad(0.2), { maxZoom: 16 });
     }
 
