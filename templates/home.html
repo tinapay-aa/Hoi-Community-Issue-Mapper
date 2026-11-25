@@ -123,6 +123,7 @@
 <script>
 (function () {
     const IS_AUTH = document.getElementById('map').dataset.auth === 'true';
+    const LOGIN_URL = "{% url 'account_login' %}"
     const issues = JSON.parse(document.getElementById('issues-data').textContent);
     const communityCenter = JSON.parse(document.getElementById('community-center').textContent);
     const DEFAULT_CENTER = [14.5995, 120.9842];   // fallback view when there are no issues
@@ -361,7 +362,7 @@
         } else {
             box.innerHTML = '<strong>Want to report an issue here?</strong>' +
                 '<span>Log in to pin a problem on the map.</span>' +
-                '<a href="#" class="btn btn-accent btn-sm">Log in</a>'; // TODO: login url
+                '<a href="' + LOGIN_URL + '" class="btn btn-accent btn-sm">Log in</a>';
         }
         draftMarker.bindPopup(box, { closeButton: false, offset: [0, -28] }).openPopup();
     });
