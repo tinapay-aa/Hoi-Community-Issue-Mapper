@@ -30,11 +30,14 @@ class ProfileForm(forms.ModelForm):
 class CommunityForm(forms.ModelForm):
     class Meta:
         model = Community
-        fields = ['name', 'description', 'is_active']
+        fields = ['name', 'description', 'latitude', 'longitude', 'address', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 150}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'latitude': forms.HiddenInput(),
+            'longitude': forms.HiddenInput(),
+            'address': forms.HiddenInput(),
         }
         labels = {'is_active': 'Active (visible in the sidebar and when reporting)'}
 
