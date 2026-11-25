@@ -72,4 +72,4 @@ Then open http://127.0.0.1:8000/. Verification emails are printed in the termina
 - ### [Russel Aaron A. Sarastal](https://github.com/tinapay-aa) <br>
 - ### [Christian Dave C. Denzon](https://github.com/Ch8967) <br>
 - ### [Mark Kevin B. Sanchez](https://github.com/vioxvanitas) <br>
-- ### [Ralph Jeffrey Cerdeña](https://github.com/Lucky70fu) <br>
+- ### [Ralph Jeffrey A. Cerdeña](https://github.com/Lucky70fu) <br>
