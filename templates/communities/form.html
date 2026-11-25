@@ -61,14 +61,18 @@
     const latEl = document.getElementById('id_latitude');
     const lngEl = document.getElementById('id_longitude');
     const hint = document.getElementById('locationHint');
-    const hasStart = latEl.value && lngEl.value;
-    const start = hasStart ? [parseFloat(latEl.value), parseFloat(lngEl.value)] : [10.7202, 122.5621];
+    if (!latEl || !lngEl) { 
+        hint.textContent = 'Map unavailable: location fields missing.'; 
+        return; 
+    }
 
     const map = L.map('locationPicker').setView(start, hasStart ? 14 : 11);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
+    setTimeout(function () { map.invalidateSize(); }, 200);
+    window.addEventListener('load', function () { map.invalidateSize(); });
 
     let marker = null;
 
