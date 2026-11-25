@@ -3,7 +3,7 @@
 
 {% block main-content %}
 <div class="page-scroll">
-  <div class="page-card">
+  <div class="page-card mx-3">
     <span class="badge status-badge status-{{ issue.status|slugify }}">{{ issue.status }}</span>
     <h1 class="mt-2">{{ issue.title }}</h1>
 
@@ -28,7 +28,7 @@
     <p class="issue-description">{{ issue.description|linebreaksbr }}</p>
 
     <div class="d-flex gap-2 mb-4">
-      <a class="btn btn-light" href="{% url 'home' %}?community={{ issue.community_id }}">Back to map</a>
+      <a class="btn btn-primary" href="{% url 'home' %}?community={{ issue.community_id }}">Back to map</a>
       {% if can_edit %}
       <a class="btn btn-accent" href="{% url 'issue_update' issue.pk %}">Edit</a>
       <a class="btn btn-outline-danger" href="{% url 'issue_delete' issue.pk %}">Delete</a>
@@ -48,7 +48,7 @@
         {% if field.name == 'proof_image' %}<div class="form-text">Required when marking an issue as Resolved.</div>{% endif %}
       </div>
       {% endfor %}
-      <button type="submit" class="btn btn-accent">Save</button>
+      <button type="submit" class="btn btn-accent">Mark as Resolved</button>
     </form>
     {% endif %}
 
