@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{% if object %}Edit {{ object.name }}{% else %}New community{% endif %}{% endblock %}
 
+{% block extra-head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
 {% block main-content %}
 <div class="page"><div class="page-inner" style="max-width:640px">
     <h1 class="page-title">{% if object %}Edit community{% else %}Create a community{% endif %}</h1>
@@ -8,6 +12,7 @@
     <form method="post" novalidate>
         {% csrf_token %}
         {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+        {{ form.latitude }}{{ form.longitude }}
 
         <div class="mb-3">
             <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
@@ -19,6 +24,20 @@
             <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
             {{ form.description }}
             {% for e in form.description.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Location</label>
+            {{ form.latitude }}{{ form.longitude }}{{ form.address }}
+            <div class="input-group mb-2">
+                <input type="search" id="placeSearch" class="form-control" placeholder="Search a place, e.g. Jaro, Iloilo City">
+                <button type="button" id="placeSearchBtn" class="btn btn-light">Search</button>
+            </div>
+            <div id="communityMap" style="height:300px;border-radius:12px;border:1px solid #e3e8ea"></div>
+            <div class="d-flex justify-content-between small text-muted mt-1">
+                <span id="mapHint">Search, or click the map to drop a pin.</span>
+                <a href="#" id="clearLocation">Clear</a>
+            </div>
         </div>
 
         {% if form.is_active %}
@@ -34,4 +53,68 @@
         </div>
     </form>
 </div></div>
+{% endblock %}
+
+{% block extra-js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    const lat = document.getElementById('id_latitude');
+    const lng = document.getElementById('id_longitude');
+    const addr = document.getElementById('id_address');
+    const hint = document.getElementById('mapHint');
+    if (!lat || !lng || !addr) { hint.textContent = 'Map unavailable: location fields missing.'; return; }
+
+    const start = lat.value && lng.value ? [parseFloat(lat.value), parseFloat(lng.value)] : [10.7202, 122.5621]; // Iloilo City
+    const map = L.map('communityMap').setView(start, lat.value ? 15 : 12);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker = null;
+    function setPoint(la, lo, label) {
+        lat.value = Number(la).toFixed(7);
+        lng.value = Number(lo).toFixed(7);
+        if (label !== undefined) addr.value = label.slice(0, 255);
+        if (marker) marker.setLatLng([la, lo]);
+        else {
+            marker = L.marker([la, lo], { draggable: true }).addTo(map);
+            marker.on('dragend', e => { const p = e.target.getLatLng(); setPoint(p.lat, p.lng); reverse(p.lat, p.lng); });
+        }
+    }
+    function reverse(la, lo) {
+        fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + la + '&lon=' + lo)
+            .then(r => r.json()).then(d => { if (d.display_name) { addr.value = d.display_name.slice(0, 255); hint.textContent = addr.value; } })
+            .catch(() => {});
+    }
+
+    if (lat.value && lng.value) setPoint(start[0], start[1]);
+    hint.textContent = addr.value || 'Search, or click the map to drop a pin.';
+
+    map.on('click', e => { setPoint(e.latlng.lat, e.latlng.lng); reverse(e.latlng.lat, e.latlng.lng); });
+
+    function search() {
+        const q = document.getElementById('placeSearch').value.trim();
+        if (!q) return;
+        fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q))
+            .then(r => r.json()).then(res => {
+                if (!res.length) { hint.textContent = 'No results found.'; return; }
+                const p = res[0];
+                setPoint(p.lat, p.lon, p.display_name);
+                map.setView([p.lat, p.lon], 15);
+                hint.textContent = p.display_name;
+            }).catch(() => { hint.textContent = 'Search failed. Try again.'; });
+    }
+    document.getElementById('placeSearchBtn').addEventListener('click', search);
+    document.getElementById('placeSearch').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+
+    document.getElementById('clearLocation').addEventListener('click', e => {
+        e.preventDefault();
+        lat.value = lng.value = addr.value = '';
+        if (marker) { map.removeLayer(marker); marker = null; }
+        hint.textContent = 'Search, or click the map to drop a pin.';
+    });
+})();
+</script>
 {% endblock %}
